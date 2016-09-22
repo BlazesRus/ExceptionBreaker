@@ -28,11 +28,20 @@ namespace ExceptionBreaker.Options {
             _exceptionListProvider = exceptionListProvider;
             _logger = logger;
             Ignored = new List<PatternData>();
+            ShowDiagnosticsObservable = new ObservableValue<bool>();
         }
         
         [TypeConverter(typeof(FailSafeJsonTypeConverter))]
         [PropertyDescriptor(typeof(ProperListPropertyDescriptor))]
         public IList<PatternData> Ignored { get; private set; }
+
+        
+        public bool ShowDiagnostics {
+            get { return ShowDiagnosticsObservable.Value; }
+            set { ShowDiagnosticsObservable.Value = value; }
+        }
+
+        internal ObservableValue<bool> ShowDiagnosticsObservable { get; private set; }
 
         protected override UIElement Child {
             get { return CreateChild(); }

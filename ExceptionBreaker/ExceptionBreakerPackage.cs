@@ -11,6 +11,7 @@ using ExceptionBreaker.Options;
 using ExceptionBreaker.Options.ImprovedComponentModel;
 using Microsoft.VisualStudio.Shell.Interop;
 using Microsoft.VisualStudio.Shell;
+using ExceptionBreaker.Options.Support;
 
 namespace ExceptionBreaker
 {
@@ -62,20 +63,24 @@ namespace ExceptionBreaker
         {
             Trace.WriteLine (string.Format(CultureInfo.CurrentCulture, "Entering Initialize() of: {0}", this));
             base.Initialize();
-            Logger = new ExtensionLogger("ExceptionBreaker", this, GuidList.OutputPane);
-
+            var optionsPage = new Lazy<OptionsPageData>(() => (OptionsPageData)GetDialogPage(typeof(OptionsPageData)));
+           
+            SetupLogger(optionsPage);
+            
             _dte = (DTE)GetService(typeof(DTE));
-            SetupExceptionBreakManager();
+            SetupExceptionBreakManager(optionsPage);
 
             // Add our command handlers for menu (commands must exist in the .vsct file)
             SetupCommandController();
         }
-
-        private void SetupExceptionBreakManager() {
+        private void SetupLogger(Lazy<OptionsPageData> optionsPage) {
+            var showDiagnostics = new Lazy<IObservableResult<bool>>(() => optionsPage.Value.ShowDiagnosticsObservable);
+            Logger = new ExtensionLogger("ExceptionBreaker", this, GuidList.OutputPane, showDiagnostics);
+        }
+        private void SetupExceptionBreakManager(Lazy<OptionsPageData> optionsPage) {
             var versionSpecificFactory = new VersionSpecificAdapterFactory(_dte);
             var debugger = GetGlobalService(typeof (SVsShellDebugger));
             var sessionManager = new DebugSessionManager(versionSpecificFactory.AdaptDebuggerInternal(debugger), Logger);
-            var optionsPage = new Lazy<OptionsPageData>(() => (OptionsPageData)GetDialogPage(typeof (OptionsPageData)));
             ExceptionBreakManager = new ExceptionBreakManager(
                 sessionManager,
                 name => optionsPage.Value.Ignored.Any(p => p.Matches(name)),

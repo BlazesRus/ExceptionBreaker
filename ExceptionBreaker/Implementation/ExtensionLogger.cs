@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using Microsoft.VisualStudio;
 using Microsoft.VisualStudio.Shell.Interop;
+using ExceptionBreaker.Options.Support;
 
 namespace ExceptionBreaker.Implementation {
     public class ExtensionLogger : IDiagnosticLogger {
@@ -10,18 +11,29 @@ namespace ExceptionBreaker.Implementation {
         private readonly IServiceProvider _serviceProvider;
         private readonly Guid _outputPaneGuid;
         private readonly string _outputPaneCaption;
+        private readonly Lazy<IObservableResult<bool>> _showDiagnostics;
 
-        public ExtensionLogger(string name, IServiceProvider serviceProvider, Guid outputPaneGuid) {
+        public ExtensionLogger(string name, IServiceProvider serviceProvider, Guid outputPaneGuid, Lazy<IObservableResult<bool>> showDiagnostics) {
             _traceCategory = name;
             _serviceProvider = serviceProvider;
             _outputPaneGuid = outputPaneGuid;
             _outputPaneCaption = "Ext: " + _traceCategory + " (Diagnostic)";
+            _showDiagnostics = new Lazy<IObservableResult<bool>>(() => {
+                IObservableResult<bool> observable = showDiagnostics.Value;
+                observable.ValueChanged += (sender, e) => {
+                    if (!((IObservableResult<bool>)sender).Value) 
+                        ClosePane(); 
+                };
+                return observable;
+            });
         }
 
         public void WriteLine(string message) {
-            var outputPane = GetOutputPane();
-            if (outputPane != null)
-                outputPane.OutputString(message + Environment.NewLine);
+            if (_showDiagnostics.Value.Value) {
+                var outputPane = GetOutputPane();
+                if (outputPane != null)
+                    outputPane.OutputString(message + Environment.NewLine);
+            }
 
             Trace.WriteLine(message, _traceCategory);
         }
@@ -56,6 +68,13 @@ namespace ExceptionBreaker.Implementation {
 
             VSInteropHelper.Validate(pane.Activate());
             return pane;
+        }
+        private void ClosePane() {
+            var outputWindow = (IVsOutputWindow)_serviceProvider.GetService(typeof(SVsOutputWindow));
+            if(outputWindow == null)
+                return;
+            var guid = _outputPaneGuid;
+            VSInteropHelper.Validate(outputWindow.DeletePane(ref guid));
         }
     }
 }

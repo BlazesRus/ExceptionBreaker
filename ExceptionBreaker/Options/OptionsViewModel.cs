@@ -36,6 +36,11 @@ namespace ExceptionBreaker.Options {
             );
 
             RecalculateExceptionsMatchingIgnored();
+
+            ShowDiagnostics = new ObservableValue<bool>(data.ShowDiagnostics);
+            ShowDiagnostics.ValueChanged += (sender, e) => {
+                data.ShowDiagnostics = ((ObservableValue<bool>)sender).Value;
+            };
         }
 
         private void RecalculateExceptionsMatchingIgnored() {
@@ -45,5 +50,6 @@ namespace ExceptionBreaker.Options {
         public PatternCollectionViewModel IgnoredPatterns { get; private set; }
         public IObservableResult<ReadOnlyCollection<ExceptionViewModel>> AllExceptions { get; private set; }
         public ReadOnlyObservableCollection<ExceptionViewModel> ExceptionsMatchingIgnored { get; private set; }
+        public ObservableValue<bool> ShowDiagnostics { get; private set; }
     }
 }
